@@ -1,0 +1,9 @@
+⏺ # Audio files
+  *.wav
+  *.m4a
+  *.mp3
+  *.flac
+  *.aiff
+
+  # Keep transcripts only
+  !*.md
