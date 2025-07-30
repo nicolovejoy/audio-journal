@@ -1,253 +1,212 @@
-# Audio Journal System
+# Audio Journal
 
-A command-line audio journaling system that records your thoughts, auto-transcribes them with Whisper, and keeps everything organized and searchable.
+A simple, efficient command-line audio journaling system with automatic transcription.
+
+**Code Repository**: https://github.com/nicolovejoy/audio-journal
 
 ## Features
 
-- **One-command recording**: Record audio with automatic timestamping
-- **Auto-transcription**: Uses OpenAI Whisper for speech-to-text
-- **Smart organization**: Files organized by year/month automatically
-- **Full-text search**: Search across all transcripts with context
-- **Audio playback**: Easy access to original recordings
-- **Markdown format**: Human-readable transcripts with metadata
+- 🎙️ **Quick audio recording** with automatic silence detection
+- 🔤 **Automatic transcription** using OpenAI Whisper (99+ languages)
+- 📁 **Organized file structure** - entries sorted by year with compact naming
+- 🗜️ **Efficient storage** - audio compressed to m4a format (~10x smaller than WAV)
+- 🔍 **Full-text search** across all transcripts
+- 🔄 **Hybrid sync support** - Git for transcripts, cloud for audio
+- 📊 **Metadata tracking** - duration, file sizes, and sync status
 
 ## Quick Start
 
-1. **Install dependencies**:
+```bash
+# Install dependencies
+brew install sox ffmpeg jq
+pip install openai-whisper
 
-   ```bash
-   # Install sox for audio recording
-   brew install sox
+# Run setup
+./setup.sh
 
-   # Install whisper for transcription
-   pip install openai-whisper
+# Start recording
+./record.sh
 
-   # Optional: Install ffmpeg for better audio handling
-   brew install ffmpeg
-   ```
+# Search entries
+./search.sh "meeting notes"
+```
 
-2. **Setup**:
+## File Structure
 
-   ```bash
-   # Clone or create your journal directory
-   mkdir ~/audio_journal
-   cd ~/audio_journal
+This system uses two separate git repositories:
 
-   # Make scripts executable
-   chmod +x record.sh
-   chmod +x search.sh
+1. **Code Repository** (`~/src/audio-journal/`):
+   - The scripts and tools (this repo)
+   - Clone from: https://github.com/nicolovejoy/audio-journal
 
-   # Optional: Add to PATH
-   echo 'export PATH="$HOME/audio_journal:$PATH"' >> ~/.zshrc
-   source ~/.zshrc
-   ```
+2. **Data Repository** (`~/Documents/AudioJournal/`):
+   - Your personal journal entries
+   - Created automatically on first run
+   - Private to your machine (or your own remote)
 
-3. **Start journaling**:
-   ```bash
-   ./record.sh
-   ```
+```
+~/Documents/AudioJournal/        # Your journal data (separate git repo)
+├── 2025/
+│   ├── JAN_28_07.05.m4a      # Audio: MON_DD_HH.MM format
+│   ├── JAN_28_07.05.md       # Transcript with metadata
+│   ├── JAN_28_14.30.m4a      # Multiple entries per day
+│   └── JAN_28_14.30.md
+├── .git/                      # Version control (transcripts only)
+├── .gitignore                 # Excludes audio files
+└── .sync/
+    └── manifest.json          # Metadata for sync tracking
+```
 
 ## Usage
 
-### Recording a Journal Entry
+### Recording
 
 ```bash
-# Basic recording
-./record.sh
-
-# Record and immediately open transcript for editing
-./record.sh --edit
+./record.sh              # Start recording (press Enter, then Ctrl+C to stop)
+./record.sh --edit       # Open transcript in editor after recording
 ```
 
-**Recording process:**
+The script will:
+1. Record audio with automatic silence trimming
+2. Compress to efficient m4a format
+3. Transcribe using Whisper
+4. Create markdown file with transcript
+5. Commit to git automatically
 
-1. Press Enter to start recording
-2. Speak your thoughts
-3. Press Ctrl+C to stop
-4. Wait for automatic transcription
-5. Files are saved and organized automatically
-
-### Searching Your Journal
+### Searching
 
 ```bash
-# Search for any term
-./search.sh "morning routine"
-
-# Search recent entries only
-./search.sh "project ideas" --recent 7
-
-# Search specific date
-./search.sh "book notes" --date 2025-07-23
-
-# Search and auto-play first match
-./search.sh "meeting" --play
+./search.sh              # List all entries
+./search.sh "keyword"    # Search transcripts
+./search.sh -l 10        # Limit results
+./search.sh -v           # Verbose output with context
 ```
 
-**Search features:**
+### Configuration
 
-- Case-insensitive search across all transcripts
-- Shows context around matches
-- Interactive selection of results
-- Option to open transcript or play audio
+Set environment variables to customize:
 
-## File Organization
-
-```
-~/audio_journal/
-├── 2025/
-│   ├── 07/
-│   │   ├── journal_20250723_083045.m4a
-│   │   ├── journal_20250723_083045.md
-│   │   ├── journal_20250723_193012.m4a
-│   │   └── journal_20250723_193012.md
-│   └── 08/
-│       ├── journal_20250801_074530.m4a
-│       └── journal_20250801_074530.md
-└── ...
+```bash
+export JOURNAL_DIR="$HOME/MyJournal"        # Change storage location
+export WHISPER_MODEL="small"                # Use larger model (base/small/medium/large)
+export AUDIO_FORMAT="wav"                   # Keep uncompressed audio
 ```
 
-**Naming convention**: `journal_YYYYMMDD_HHMMSS.{m4a,md}`
+## Sync Strategy
+
+The system uses a hybrid approach:
+
+1. **Transcripts in Git**
+   - Small text files (~2-5KB)
+   - Version controlled
+   - Easy to merge across devices
+   - Full-text searchable
+
+2. **Audio in Cloud Storage**
+   ```bash
+   # Option 1: iCloud (Mac/iOS)
+   ln -s ~/Library/Mobile\ Documents/com~apple~CloudDocs/AudioJournal ~/Documents/AudioJournal
+   
+   # Option 2: Dropbox
+   ln -s ~/Dropbox/AudioJournal ~/Documents/AudioJournal
+   ```
+
+3. **Metadata Tracking**
+   - SHA-256 hashes for integrity
+   - File sizes and durations
+   - Sync status per entry
 
 ## Transcript Format
 
-Each transcript is a markdown file with:
+Each transcript includes:
+- Recording date and time
+- Audio file reference
+- Duration and file size
+- Full transcription
+- Space for manual notes
 
+Example:
 ```markdown
-# Audio Journal - July 23, 2025 at 8:30 AM
+# Audio Journal - January 28, 2025 at 07:05 AM
 
-**Audio File:** `journal_20250723_083045.m4a`  
-**Duration:** 127s  
-**Size:** 2.1M  
-**Model:** base
+**Audio:** `JAN_28_07.05.m4a` | **Duration:** 180s | **Size:** 1.2M  
 
 ---
 
 ## Transcript
 
-[Your transcribed thoughts here...]
+Today I want to discuss the new project architecture...
 
 ---
 
-## Notes & Reflections
+## Notes
 
 <!-- Add your thoughts, tags, or follow-up notes here -->
+#architecture #planning
 ```
 
-## Configuration
+## What's New
 
-Set environment variables to customize behavior:
+### Efficient Storage
+- **Compact naming**: `MON_DD_HH.MM` format (e.g., `JAN_28_07.05`)
+- **m4a compression**: ~10x smaller than WAV with great quality
+- **Yearly folders**: Simple flat structure, easy to archive
 
-```bash
-# Change journal location (default: ~/audio_journal)
-export JOURNAL_DIR="/path/to/your/journal"
+### Hybrid Sync
+- **Git for text**: Version control for all transcripts
+- **Cloud for audio**: iCloud/Dropbox for large audio files
+- **Metadata tracking**: JSON manifest with hashes and sync status
 
-# Change audio format (default: wav)
-export AUDIO_FORMAT="mp3"  # or flac, aiff
+### Better Organization
+- **One folder per year**: ~365 files/year is manageable
+- **Auto-commit**: Git tracks all transcript changes
+- **Setup script**: One-command installation
 
-# Change Whisper model (default: base)
-# Options: tiny, base, small, medium, large
-export WHISPER_MODEL="small"
+## Dependencies
 
-# Set default editor for transcripts
-export EDITOR="code"  # or vim, nano, etc.
-```
+- **sox**: Audio recording
+- **ffmpeg**: Audio compression  
+- **whisper**: Transcription (optional)
+- **jq**: JSON processing (optional)
+- **git**: Version control (optional)
 
-## Tips & Tricks
+## Privacy & Security
 
-### Daily Practice
+- All data stored locally
+- No cloud services required
+- Audio files can be encrypted via FileVault
+- Git repos can be private/self-hosted
 
-- Set a consistent time (e.g., morning coffee)
-- Keep recordings focused (3-10 minutes)
-- Review and add notes to transcripts later
+## Tips
 
-### Organization
-
-- Use consistent keywords for easy searching
-- Add tags in the "Notes & Reflections" section
-- Reference other entries with dates or keywords
-
-### Audio Quality
-
-- Find a quiet space when possible
-- Speak clearly and at normal pace
-- Test recording levels initially
-
-### Workflow Integration
-
-- Add aliases for common commands:
-  ```bash
-  alias journal="cd ~/audio_journal && ./record.sh"
-  alias jsearch="cd ~/audio_journal && ./search.sh"
-  ```
+1. **For long recordings**: Whisper works best with <30 min audio
+2. **For better transcription**: Use `WHISPER_MODEL=small` or `medium`
+3. **For meetings**: Consider `WHISPER_MODEL=medium.en` for English-only
+4. **For privacy**: Keep audio files local, only sync transcripts
+5. **For multilingual use**: Whisper auto-detects language but works best when each recording is in a single language. Don't mix languages within one recording.
 
 ## Troubleshooting
 
 ### "sox not found"
-
 ```bash
 brew install sox
 ```
 
 ### "whisper not found"
-
 ```bash
 pip install openai-whisper
 ```
 
 ### Poor transcription quality
-
-- Try a larger Whisper model: `export WHISPER_MODEL="small"`
+- Try a larger model: `export WHISPER_MODEL="small"`
 - Check audio input levels
 - Reduce background noise
 
 ### Permission denied
-
 ```bash
-chmod +x record.sh search.sh
+chmod +x *.sh
 ```
 
-### Can't hear audio playback
+## License
 
-- Check system volume
-- Install alternative player: `brew install mpv`
-
-## Advanced Usage
-
-### Batch Processing Old Audio Files
-
-If you have existing audio files to transcribe:
-
-```bash
-# Create a simple batch script
-for file in *.m4a; do
-    whisper "$file" --output_format txt
-    # Process into markdown format...
-done
-```
-
-### Integration with Note-Taking Apps
-
-- Import markdown files into Obsidian, Logseq, or Notion
-- Use file system watchers to auto-import new entries
-- Set up cloud sync for cross-device access
-
-### Backup Strategy
-
-- Sync journal directory to cloud storage
-- Consider separate backup for audio files (larger)
-- Export transcripts periodically
-
-## Claude Code Integration
-
-This system works great with Claude Code for:
-
-- Customizing scripts for your workflow
-- Adding new features (tags, summaries, etc.)
-- Fixing issues or improving performance
-- Creating additional automation
-
-Just run `claude-code` in your journal directory and ask for help!
-
----
-
-**Happy journaling!** 🎙️📝
+MIT License - see LICENSE file

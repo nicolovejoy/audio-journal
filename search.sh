@@ -5,146 +5,218 @@
 
 set -e
 
-JOURNAL_DIR="${JOURNAL_DIR:-$HOME/audio_journal}"
+JOURNAL_DIR="${JOURNAL_DIR:-$HOME/Documents/AudioJournal}"
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-if [ $# -eq 0 ]; then
-    echo "Usage: $0 <search_term> [options]"
+# Function to display usage
+show_usage() {
+    echo "Usage: $0 [search_term] [options]"
+    echo ""
+    echo "Search through your audio journal transcripts"
     echo ""
     echo "Options:"
-    echo "  --recent N    Show only last N entries (default: all)"
-    echo "  --date YYYY-MM-DD    Show entries from specific date"
-    echo "  --play        Auto-play first match"
+    echo "  -l, --limit N        Limit results to N entries (default: 20)"
+    echo "  -v, --verbose        Show more context around matches"
+    echo "  -a, --audio          Play audio file instead of opening transcript"
+    echo "  -y, --year YYYY      Search only in specific year"
     echo ""
     echo "Examples:"
-    echo "  $0 'morning routine'"
-    echo "  $0 project --recent 7"
-    echo "  $0 'book idea' --date 2025-07-20"
+    echo "  $0                   # List all entries"
+    echo "  $0 'morning routine' # Search for term"
+    echo "  $0 meeting -l 5      # Show 5 most recent matches"
+    echo "  $0 -y 2025           # Show all 2025 entries"
     exit 1
-fi
+}
 
-SEARCH_TERM="$1"
-shift
+# Default values
+SEARCH_TERM=""
+LIMIT=20
+VERBOSE=false
+PLAY_AUDIO=false
+YEAR_FILTER=""
 
-# Parse options
-RECENT=""
-DATE_FILTER=""
-AUTO_PLAY=false
-
+# Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --recent)
-            RECENT="$2"
+        -h|--help)
+            show_usage
+            ;;
+        -l|--limit)
+            LIMIT="$2"
             shift 2
             ;;
-        --date)
-            DATE_FILTER="$2"
-            shift 2
-            ;;
-        --play)
-            AUTO_PLAY=true
+        -v|--verbose)
+            VERBOSE=true
             shift
             ;;
-        *)
+        -a|--audio)
+            PLAY_AUDIO=true
+            shift
+            ;;
+        -y|--year)
+            YEAR_FILTER="$2"
+            shift 2
+            ;;
+        -*)
             echo "Unknown option: $1"
-            exit 1
+            show_usage
+            ;;
+        *)
+            SEARCH_TERM="$1"
+            shift
             ;;
     esac
 done
 
-# Find matching transcript files
-if [[ -n "$DATE_FILTER" ]]; then
-    # Convert YYYY-MM-DD to search pattern
-    DATE_PATTERN=$(echo "$DATE_FILTER" | sed 's/-//g')
-    SEARCH_PATH="$JOURNAL_DIR"
-    FIND_CMD="find \"$SEARCH_PATH\" -name \"journal_${DATE_PATTERN}_*.md\""
+# Determine search path
+if [[ -n "$YEAR_FILTER" ]]; then
+    SEARCH_PATH="$JOURNAL_DIR/transcripts/$YEAR_FILTER"
+    if [[ ! -d "$SEARCH_PATH" ]]; then
+        echo -e "${YELLOW}No entries found for year $YEAR_FILTER${NC}"
+        exit 0
+    fi
 else
-    FIND_CMD="find \"$JOURNAL_DIR\" -name \"*.md\" -type f"
+    SEARCH_PATH="$JOURNAL_DIR/transcripts"
 fi
 
-# Apply recent filter
-if [[ -n "$RECENT" ]]; then
-    FIND_CMD="$FIND_CMD | head -$RECENT"
+# Find transcript files
+echo -e "${GREEN}Searching in: $SEARCH_PATH${NC}"
+if [[ -n "$SEARCH_TERM" ]]; then
+    echo -e "${GREEN}Search term: '$SEARCH_TERM'${NC}"
 fi
-
-# Search for term in files
-echo -e "${GREEN}Searching for: '$SEARCH_TERM'${NC}"
 echo ""
 
-MATCHES=()
-while IFS= read -r -d '' file; do
-    if grep -qi "$SEARCH_TERM" "$file"; then
-        MATCHES+=("$file")
-    fi
-done < <(eval "$FIND_CMD" -print0 2>/dev/null)
+# Build find command
+FIND_CMD="find \"$SEARCH_PATH\" -name \"*.md\" -type f"
+if [[ ! -d "$SEARCH_PATH" ]]; then
+    echo -e "${YELLOW}Journal directory not found: $SEARCH_PATH${NC}"
+    echo "Run ./setup.sh to initialize"
+    exit 1
+fi
 
-if [[ ${#MATCHES[@]} -eq 0 ]]; then
-    echo -e "${YELLOW}No matches found for '$SEARCH_TERM'${NC}"
-    exit 0
+# Get all markdown files, sorted by newest first
+mapfile -t ALL_FILES < <(eval "$FIND_CMD" | sort -r)
+
+# Filter by search term if provided
+MATCHES=()
+if [[ -n "$SEARCH_TERM" ]]; then
+    for file in "${ALL_FILES[@]}"; do
+        if grep -qi "$SEARCH_TERM" "$file" 2>/dev/null; then
+            MATCHES+=("$file")
+        fi
+    done
+else
+    MATCHES=("${ALL_FILES[@]}")
+fi
+
+# Apply limit
+if [[ ${#MATCHES[@]} -gt $LIMIT ]]; then
+    MATCHES=("${MATCHES[@]:0:$LIMIT}")
 fi
 
 # Display results
-echo -e "${GREEN}Found ${#MATCHES[@]} matches:${NC}"
+if [[ ${#MATCHES[@]} -eq 0 ]]; then
+    if [[ -n "$SEARCH_TERM" ]]; then
+        echo -e "${YELLOW}No matches found for '$SEARCH_TERM'${NC}"
+    else
+        echo -e "${YELLOW}No journal entries found${NC}"
+    fi
+    exit 0
+fi
+
+echo -e "${GREEN}Found ${#MATCHES[@]} entries:${NC}"
 echo ""
 
+# Display each match
 for i in "${!MATCHES[@]}"; do
     file="${MATCHES[$i]}"
     
-    # Extract date from filename
-    basename_file=$(basename "$file")
-    if [[ $basename_file =~ journal_([0-9]{8})_([0-9]{6})\.md ]]; then
-        date_part="${BASH_REMATCH[1]}"
-        time_part="${BASH_REMATCH[2]}"
-        formatted_date=$(date -j -f "%Y%m%d" "$date_part" +"%B %d, %Y" 2>/dev/null || echo "$date_part")
-        formatted_time="${time_part:0:2}:${time_part:2:2}:${time_part:4:2}"
+    # Extract date from new filename format
+    basename_file=$(basename "$file" .md)
+    year=$(basename "$(dirname "$file")")
+    
+    # Parse filename like JAN_28_07.05
+    if [[ $basename_file =~ ^([A-Z]{3})_([0-9]{2})_([0-9]{2})\.([0-9]{2})$ ]]; then
+        month="${BASH_REMATCH[1]}"
+        day="${BASH_REMATCH[2]}"
+        hour="${BASH_REMATCH[3]}"
+        minute="${BASH_REMATCH[4]}"
+        formatted_date="$month $day, $year at $hour:$minute"
     else
-        formatted_date="Unknown date"
-        formatted_time=""
+        formatted_date="$basename_file"
     fi
     
-    # Show context around match
-    context=$(grep -i -A2 -B2 "$SEARCH_TERM" "$file" | head -5)
+    echo -e "${BLUE}[$((i+1))] $formatted_date${NC}"
+    echo -e "    File: $(basename "$file")"
     
-    echo -e "${BLUE}[$((i+1))] $formatted_date $formatted_time${NC}"
-    echo -e "${YELLOW}Context:${NC}"
-    echo "$context" | sed 's/^/  /'
+    # Show context if search term provided
+    if [[ -n "$SEARCH_TERM" ]]; then
+        if [[ "$VERBOSE" == true ]]; then
+            context=$(grep -i -A3 -B3 "$SEARCH_TERM" "$file" 2>/dev/null | head -10)
+        else
+            context=$(grep -i -m1 "$SEARCH_TERM" "$file" 2>/dev/null)
+        fi
+        if [[ -n "$context" ]]; then
+            echo -e "${YELLOW}    Match:${NC}"
+            echo "$context" | sed 's/^/      /'
+        fi
+    else
+        # Show first line of transcript when no search term
+        first_line=$(grep -m1 "^[^#]" "$file" 2>/dev/null | head -1)
+        if [[ -n "$first_line" ]]; then
+            echo "    Preview: ${first_line:0:60}..."
+        fi
+    fi
     echo ""
 done
 
 # Interactive selection
-if [[ ${#MATCHES[@]} -gt 1 ]] && [[ "$AUTO_PLAY" != true ]]; then
-    echo -n "Select entry to open (1-${#MATCHES[@]}), 'a' for audio, or Enter to exit: "
-    read -r selection
-    
-    if [[ "$selection" =~ ^[0-9]+$ ]] && [[ $selection -ge 1 ]] && [[ $selection -le ${#MATCHES[@]} ]]; then
-        selected_file="${MATCHES[$((selection-1))]}"
-    elif [[ "$selection" == "a" ]]; then
-        echo -n "Select entry for audio (1-${#MATCHES[@]}): "
-        read -r audio_selection
-        if [[ "$audio_selection" =~ ^[0-9]+$ ]] && [[ $audio_selection -ge 1 ]] && [[ $audio_selection -le ${#MATCHES[@]} ]]; then
-            selected_file="${MATCHES[$((audio_selection-1))]}"
-            play_audio=true
-        fi
+if [[ ${#MATCHES[@]} -eq 1 ]]; then
+    selected_file="${MATCHES[0]}"
+    if [[ "$PLAY_AUDIO" == true ]]; then
+        action="play"
     else
-        exit 0
+        action="open"
     fi
 else
-    selected_file="${MATCHES[0]}"
+    echo -n "Select entry (1-${#MATCHES[@]}), 'q' to quit: "
+    read -r selection
+    
+    if [[ "$selection" == "q" ]] || [[ -z "$selection" ]]; then
+        exit 0
+    elif [[ "$selection" =~ ^[0-9]+$ ]] && [[ $selection -ge 1 ]] && [[ $selection -le ${#MATCHES[@]} ]]; then
+        selected_file="${MATCHES[$((selection-1))]}"
+        
+        if [[ "$PLAY_AUDIO" != true ]]; then
+            echo -n "Open (t)ranscript or play (a)udio? [t/a]: "
+            read -r action_choice
+            if [[ "$action_choice" == "a" ]]; then
+                action="play"
+            else
+                action="open"
+            fi
+        else
+            action="play"
+        fi
+    else
+        echo -e "${YELLOW}Invalid selection${NC}"
+        exit 1
+    fi
 fi
 
-# Open selected file or play audio
-if [[ "$play_audio" == true ]] || [[ "$AUTO_PLAY" == true ]]; then
-    # Find associated audio file
-    transcript_dir=$(dirname "$selected_file")
-    transcript_name=$(basename "$selected_file" .md)
-    audio_file="$transcript_dir/${transcript_name}.wav"
+# Perform action
+if [[ "$action" == "play" ]]; then
+    # Find associated audio file in audio directory
+    basename_file=$(basename "$selected_file" .md)
+    year=$(basename "$(dirname "$selected_file")")
+    audio_file="$JOURNAL_DIR/audio/$year/${basename_file}.m4a"
     
-    # Also check for m4a if wav not found (for backward compatibility)
+    # Check for other audio formats if m4a not found
     if [[ ! -f "$audio_file" ]]; then
-        audio_file="$transcript_dir/${transcript_name}.m4a"
+        audio_file="$JOURNAL_DIR/audio/$year/${basename_file}.wav"
     fi
     
     if [[ -f "$audio_file" ]]; then
@@ -153,14 +225,17 @@ if [[ "$play_audio" == true ]] || [[ "$AUTO_PLAY" == true ]]; then
             afplay "$audio_file"
         elif command -v mpv &> /dev/null; then
             mpv "$audio_file"
+        elif command -v ffplay &> /dev/null; then
+            ffplay -nodisp -autoexit "$audio_file" 2>/dev/null
         else
-            echo "No audio player found. Install afplay or mpv."
-            open "$audio_file"  # Fallback to system default
+            echo "Opening in default application..."
+            open "$audio_file"
         fi
     else
-        echo -e "${YELLOW}Audio file not found: $audio_file${NC}"
+        echo -e "${YELLOW}Audio file not found${NC}"
+        echo "Expected: $audio_file"
     fi
 else
     echo -e "${GREEN}Opening: $(basename "$selected_file")${NC}"
-    ${EDITOR:-code} "$selected_file"
+    ${EDITOR:-open} "$selected_file"
 fi
