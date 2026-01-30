@@ -12,7 +12,8 @@ A simple, efficient command-line audio journaling system with automatic transcri
 - 🗜️ **Efficient storage** - audio compressed to m4a format (~10x smaller than WAV)
 - 🔍 **Full-text search** across all transcripts
 - 🔄 **Hybrid sync support** - Git for transcripts, cloud for audio
-- 📊 **Metadata tracking** - duration, file sizes, and sync status
+- 📊 **Enhanced transcription** - timestamps, paragraph breaks, confidence metrics
+- 📥 **Import existing audio** - process voice memos and recordings from other devices
 
 ## Quick Start
 
@@ -46,11 +47,14 @@ This system uses two separate git repositories:
 
 ```
 ~/Documents/AudioJournal/        # Your journal data (separate git repo)
-├── 2025/
-│   ├── JAN_28_07.05.m4a      # Audio: MON_DD_HH.MM format
-│   ├── JAN_28_07.05.md       # Transcript with metadata
-│   ├── JAN_28_14.30.m4a      # Multiple entries per day
-│   └── JAN_28_14.30.md
+├── audio/
+│   └── 2025/
+│       ├── JAN_28_07.05.m4a  # Audio: MON_DD_HH.MM format
+│       └── JAN_28_14.30.m4a  # Multiple entries per day
+├── transcripts/
+│   └── 2025/
+│       ├── JAN_28_07.05.md   # Enhanced transcript with metadata
+│       └── JAN_28_14.30.md   # Includes timestamps and paragraphs
 ├── .git/                      # Version control (transcripts only)
 ├── .gitignore                 # Excludes audio files
 └── .sync/
@@ -66,11 +70,15 @@ This system uses two separate git repositories:
 ./record.sh --edit       # Open transcript in editor after recording
 ```
 
-The script will:
+The enhanced recording script will:
 1. Record audio with automatic silence trimming
 2. Compress to efficient m4a format
-3. Transcribe using Whisper
-4. Create markdown file with transcript
+3. Transcribe using Whisper with detailed metadata
+4. Create markdown file with:
+   - Minute-by-minute timestamps
+   - Automatic paragraph breaks on pauses
+   - Word count and duration
+   - Confidence metrics per segment
 5. Commit to git automatically
 
 ### Searching
@@ -80,6 +88,26 @@ The script will:
 ./search.sh "keyword"    # Search transcripts
 ./search.sh -l 10        # Limit results
 ./search.sh -v           # Verbose output with context
+./search.sh -y 2025      # Filter by year
+```
+
+### Processing Existing Audio
+
+```bash
+# Process a single file
+./process-existing.sh recording.m4a
+
+# Override the recording date
+./process-existing.sh -d "2024-12-25 14:30" old_recording.wav
+
+# Batch process a directory
+./process-existing.sh -b ~/Downloads/audio_files/
+
+# Process multiple files
+./process-existing.sh *.m4a
+
+# Force overwrite existing transcripts
+./process-existing.sh -f recording.m4a
 ```
 
 ### Configuration
@@ -118,24 +146,42 @@ The system uses a hybrid approach:
 
 ## Transcript Format
 
-Each transcript includes:
+Enhanced transcripts include:
 - Recording date and time
 - Audio file reference
-- Duration and file size
-- Full transcription
+- Duration and file size  
+- Timestamped transcription with paragraph breaks
+- Word count and language detection
+- Confidence metrics
 - Space for manual notes
 
 Example:
 ```markdown
 # Audio Journal - January 28, 2025 at 07:05 AM
 
-**Audio:** `JAN_28_07.05.m4a` | **Duration:** 180s | **Size:** 1.2M  
+**Audio:** `JAN_28_07.05.m4a` | **Duration:** 03:45 | **Size:** 1.2M  
 
 ---
 
 ## Transcript
 
-Today I want to discuss the new project architecture...
+[00:00] Today I want to discuss the new project architecture. The main focus will be on scalability and maintainability.
+
+[01:00] We need to consider three key components: the frontend, the API layer, and the database design.
+
+[02:00] First, let's talk about the frontend architecture...
+
+---
+
+## Metadata
+
+- **Words:** 523
+- **Duration:** 03:45
+- **Language:** English (95.3% confidence)
+- **Paragraphs:** 3
+- **Average Confidence:** 95.3%
+- **Low Confidence Segments:** 2 (marked with *)
+- **Model:** whisper-base
 
 ---
 
