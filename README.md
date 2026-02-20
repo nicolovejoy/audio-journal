@@ -25,8 +25,8 @@ pip install openai-whisper
 # Run setup
 ./setup.sh
 
-# Start recording
-./record.sh
+# Start recording (live transcription mode)
+./record-now.sh
 
 # Search entries
 ./search.sh "meeting notes"
@@ -66,20 +66,15 @@ This system uses two separate git repositories:
 ### Recording
 
 ```bash
-./record.sh              # Start recording (press Enter, then Ctrl+C to stop)
-./record.sh --edit       # Open transcript in editor after recording
+./record-now.sh          # Start live transcription mode
 ```
 
-The enhanced recording script will:
-1. Record audio with automatic silence trimming
-2. Compress to efficient m4a format
-3. Transcribe using Whisper with detailed metadata
-4. Create markdown file with:
-   - Minute-by-minute timestamps
-   - Automatic paragraph breaks on pauses
-   - Word count and duration
-   - Confidence metrics per segment
-5. Commit to git automatically
+**Controls during recording:**
+- `RETURN` - Start new paragraph (triggers transcription)
+- `.` - Mark sentence end
+- `Ctrl+C` - Stop recording and save
+
+The script transcribes in real-time as you speak, showing results as they're ready.
 
 ### Searching
 

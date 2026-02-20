@@ -6,9 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Development & Testing
 ```bash
-# Run the main recording script
-./record.sh
-./record.sh --edit  # Opens transcript after recording
+# Run the main recording script (live transcription mode)
+./record-now.sh
 
 # Search through transcripts
 ./search.sh "keyword"
@@ -17,19 +16,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 # Setup new installation
 ./setup.sh
-
-```
-
-### Testing Individual Components
-```bash
-# Test audio recording (requires sox)
-sox -d -r 16000 test.wav silence 1 0.1 3% 1 2.0 3%
-
-# Test audio compression (requires ffmpeg)
-ffmpeg -i test.wav -c:a aac -b:a 64k test.m4a
-
-# Test Whisper transcription
-whisper test.m4a --language en --output_format txt
 
 # Process existing audio files
 ./process-existing.sh recording.m4a
@@ -46,8 +32,7 @@ This is a Bash-based audio journaling system with a two-repository design:
 
 ### Core Scripts
 
-- **record.sh**: Main recording and transcription script. Uses sox for recording, ffmpeg for compression, and OpenAI Whisper for transcription. Handles all file organization and git commits.
-- **record-enhanced.sh**: Enhanced version with timestamps, paragraph breaks, word count, and transcription confidence metrics.
+- **record-now.sh**: Live transcription mode. Records audio while transcribing in real-time. Press RETURN to start new paragraphs, Ctrl+C to stop and save. Uses sox for recording, whisper for transcription.
 - **process-existing.sh**: Process existing audio files with enhanced features. Preserves original recording dates and supports batch processing.
 - **search.sh**: Search functionality with interactive selection and playback. Searches across all transcripts and provides context.
 - **setup.sh**: Initial setup script that creates directory structure, checks dependencies, and initializes git repos.
