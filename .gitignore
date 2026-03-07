@@ -1,9 +1,18 @@
-⏺ # Audio files
-  *.wav
-  *.m4a
-  *.mp3
-  *.flac
-  *.aiff
+# Audio files
+*.wav
+*.m4a
+*.mp3
+*.flac
+*.aiff
 
-  # Keep transcripts only
-  !*.md
+# Keep transcripts only
+!*.md
+
+# OS files
+.DS_Store
+
+# Claude Code
+.claude/
+
+# Working files (songwriting experiments, scratch)
+tmp/

@@ -32,10 +32,18 @@ This is a Bash-based audio journaling system with a two-repository design:
 
 ### Core Scripts
 
-- **record-now.sh**: Live transcription mode. Records audio while transcribing in real-time. Press RETURN to start new paragraphs, Ctrl+C to stop and save. Uses sox for recording, whisper for transcription.
-- **process-existing.sh**: Process existing audio files with enhanced features. Preserves original recording dates and supports batch processing.
+- **record.sh**: Main recording and transcription script. Uses sox for recording, ffmpeg for compression. Supports both OpenAI Whisper API (fast, recommended) and local whisper (free). Includes timestamps, paragraph breaks, confidence metrics, and auto git commits.
+- **record-now.sh**: Live transcription mode (experimental). Records audio while transcribing in real-time via local whisper. Press RETURN for new paragraphs, Ctrl+C to stop and save.
+- **process-existing.sh**: Process existing audio files. Preserves original recording dates and supports batch processing.
 - **search.sh**: Search functionality with interactive selection and playback. Searches across all transcripts and provides context.
 - **setup.sh**: Initial setup script that creates directory structure, checks dependencies, and initializes git repos.
+
+### Transcription Modes
+
+The system supports two transcription backends:
+
+1. **OpenAI Whisper API** (recommended): Set `OPENAI_API_KEY` env var. Fast (~10s for 5min audio), highest quality.
+2. **Local whisper**: Install via `pip install openai-whisper`. Free but slower. Model controlled via `WHISPER_MODEL` env var.
 
 ### Data Structure
 ```
@@ -66,3 +74,13 @@ AudioJournal/
 - Use colored output for better UX (but make it optional)
 - Always use proper error handling and user feedback
 - Maintain backward compatibility with existing data structures
+
+### Scope
+
+This repo is focused on **audio journaling** — spoken word recording, transcription, and archival. Songwriting transcription has moved to the [songscribe](~/src/songscribe) project.
+
+### Next Steps
+
+1. Improve journal search (tagging, categorization, date ranges)
+2. Better transcript formatting (speaker detection, topic headers)
+3. Evaluate `record-live-v2.py` / `record-now.sh` live transcription mode for promotion from experimental

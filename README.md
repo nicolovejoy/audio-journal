@@ -1,8 +1,10 @@
 # Audio Journal
 
-A simple, efficient command-line audio journaling system with automatic transcription.
+A simple, efficient command-line audio journaling system for spoken word recording with automatic transcription.
 
 **Code Repository**: https://github.com/nicolovejoy/audio-journal
+
+> **Looking for song transcription?** See [songscribe](https://github.com/nicolovejoy/songscribe) — a sibling project for transcribing and annotating song recordings.
 
 ## Features
 
@@ -18,19 +20,31 @@ A simple, efficient command-line audio journaling system with automatic transcri
 ## Quick Start
 
 ```bash
-# Install dependencies
+# 1. Install required dependencies
 brew install sox ffmpeg jq
+
+# 2. Set up transcription (choose one):
+
+# Option A: OpenAI API (recommended - fast, no setup)
+export OPENAI_API_KEY="your-api-key"
+
+# Option B: Local Whisper (free, but slower)
 pip install openai-whisper
 
-# Run setup
+# 3. Run setup
 ./setup.sh
 
-# Start recording (live transcription mode)
+# 4. Start recording
+./record.sh
+
+# Or try live transcription mode (experimental)
 ./record-now.sh
 
-# Search entries
+# 5. Search entries
 ./search.sh "meeting notes"
 ```
+
+**Tip:** Add `export OPENAI_API_KEY="..."` to your `~/.zshrc` for persistent configuration.
 
 ## File Structure
 
@@ -66,15 +80,16 @@ This system uses two separate git repositories:
 ### Recording
 
 ```bash
-./record-now.sh          # Start live transcription mode
+./record.sh              # Standard recording (press Enter, then Ctrl+C to stop)
+./record.sh --edit       # Open transcript in editor after recording
 ```
 
-**Controls during recording:**
-- `RETURN` - Start new paragraph (triggers transcription)
-- `.` - Mark sentence end
-- `Ctrl+C` - Stop recording and save
-
-The script transcribes in real-time as you speak, showing results as they're ready.
+The recording script will:
+1. Record audio with automatic silence trimming
+2. Compress to efficient m4a format
+3. Transcribe using Whisper with detailed metadata
+4. Create markdown file with timestamps, paragraph breaks, confidence metrics
+5. Commit to git automatically
 
 ### Searching
 
@@ -85,6 +100,16 @@ The script transcribes in real-time as you speak, showing results as they're rea
 ./search.sh -v           # Verbose output with context
 ./search.sh -y 2025      # Filter by year
 ```
+
+### Live Transcription (Experimental)
+
+For real-time transcription as you speak:
+
+```bash
+./record-now.sh
+```
+
+This uses a Python script that transcribes in chunks while you record. Press Return to mark paragraph breaks, Ctrl+C to finish. Requires local whisper installed.
 
 ### Processing Existing Audio
 
@@ -110,10 +135,16 @@ The script transcribes in real-time as you speak, showing results as they're rea
 Set environment variables to customize:
 
 ```bash
+# Transcription (API recommended for speed)
+export OPENAI_API_KEY="sk-..."              # Use OpenAI Whisper API (fast)
+export WHISPER_MODEL="small"                # Local whisper model (base/small/medium/large)
+
+# Storage
 export JOURNAL_DIR="$HOME/MyJournal"        # Change storage location
-export WHISPER_MODEL="small"                # Use larger model (base/small/medium/large)
-export AUDIO_FORMAT="wav"                   # Keep uncompressed audio
+export AUDIO_FORMAT="wav"                   # Keep uncompressed audio (default: m4a)
 ```
+
+**Transcription priority:** If `OPENAI_API_KEY` is set, the API is used. Otherwise, local whisper is used if installed.
 
 ## Sync Strategy
 
@@ -205,11 +236,17 @@ Example:
 
 ## Dependencies
 
-- **sox**: Audio recording
-- **ffmpeg**: Audio compression  
-- **whisper**: Transcription (optional)
-- **jq**: JSON processing (optional)
-- **git**: Version control (optional)
+**Required:**
+- **sox**: Audio recording (`brew install sox`)
+- **ffmpeg**: Audio compression (`brew install ffmpeg`)
+
+**For transcription (one of):**
+- **OpenAI API key**: Set `OPENAI_API_KEY` - fast cloud transcription (~$0.006/min)
+- **whisper**: Local transcription (`pip install openai-whisper`) - free but slower
+
+**Optional:**
+- **jq**: Enhanced metadata parsing (`brew install jq`)
+- **git**: Version control for transcripts
 
 ## Privacy & Security
 
@@ -233,13 +270,23 @@ Example:
 brew install sox
 ```
 
-### "whisper not found"
+### No transcription available
+Either set up the OpenAI API:
+```bash
+export OPENAI_API_KEY="sk-..."
+```
+Or install local whisper:
 ```bash
 pip install openai-whisper
 ```
 
-### Poor transcription quality
-- Try a larger model: `export WHISPER_MODEL="small"`
+### API transcription failed
+- Check your API key is valid
+- Ensure you have credits in your OpenAI account
+- The script will automatically fall back to local whisper if available
+
+### Poor transcription quality (local whisper)
+- Try a larger model: `export WHISPER_MODEL="small"` or `medium`
 - Check audio input levels
 - Reduce background noise
 
