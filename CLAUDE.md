@@ -81,6 +81,12 @@ This repo is focused on **audio journaling** — spoken word recording, transcri
 
 ### Next Steps
 
-1. Improve journal search (tagging, categorization, date ranges)
-2. Better transcript formatting (speaker detection, topic headers)
-3. Evaluate `record-live-v2.py` / `record-now.sh` live transcription mode for promotion from experimental
+> **Direction change (2026-06-01):** This Bash CLI is being retired in favor of a
+> fresh successor, **recountly** — a Next.js/Vercel web app with live OpenAI Realtime
+> transcription, phone access, and Postgres+Blob storage. Build brief is in
+> `docs/recountly-build-prompt.md` (to be moved to the new `recountly` repo). These
+> scripts remain functional in the meantime; no further feature work planned here.
+
+1. Hand off to the new `recountly` repo (scaffold per the build brief)
+2. (Later) Import existing transcripts from `AudioJournal/transcripts/` into recountly's DB
+3. Keep these scripts working as a fallback until recountly reaches feature parity
